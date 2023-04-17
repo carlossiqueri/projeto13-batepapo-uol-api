@@ -15,6 +15,13 @@ const userSchema = joi.object({
   name: joi.string().required(),
 });
 
+// Validação de mensagens JOI
+const messagesSchema = joi.object({
+  to: joi.string().required(),
+  text: joi.string().required(),
+  type: joi.valid("message", "private_message").required()
+})
+
 // Configuração do banco de dados
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
@@ -63,7 +70,20 @@ app.post("/participants", async (req, res) => {
   }
 });
 
-app.post("/messages", async (req, res) => {});
+app.post("/messages", async (req, res) => {
+  const { user } = req.header.user
+  const {to, text, type} = req.body;
+  const h = dayjs().format("HH:mm:ss");
+  const validation = messagesSchema.validate(req.body, { abortEarly: false });
+
+  const sender = await db.collection("participants").findOne({user: user})
+  if (!sender || validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.status(422).send(errors);
+  }
+
+
+});
 
 app.get("/participants", (req, res) => {
   db.collection("participants")
