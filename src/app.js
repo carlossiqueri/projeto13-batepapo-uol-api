@@ -76,7 +76,7 @@ app.post("/messages", async (req, res) => {
   const h = dayjs().format("HH:mm:ss");
   const validation = messagesSchema.validate(req.body, { abortEarly: false });
 
-  const sender = await db.collection("participants").findOne({user: user})
+  const sender = await db.collection("participants").findOne({name: user})
   if (!sender || validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
     return res.status(422).send(errors);
