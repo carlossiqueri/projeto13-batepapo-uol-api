@@ -10,24 +10,21 @@ app.use(cors());
 dotenv.config();
 
 // Configuração do banco de dados
-let db;
+
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
-mongoClient
-  .connect()
-  .then(() => (db = mongoClient.db()))
-  .catch((err) => console.log(err.message));
+try {
+  await mongoClient.connect();
+  console.log("MongoDB conectado!");
+} catch (err) {
+  console.log(err.message);
+}
+
+const db = mongoClient.db();
 
 // Endpoints
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
   const newParticipant = { name, lastStatus: Date.now() };
-  try {
-    await db.collection("participants").insertOne(newParticipant)
-    res.status(201).send("Participante adicionado")
-  } catch(err){
-    res.status(500).send(err.message)
-  }
-
   const h = dayjs().format("HH:mm:ss");
   const entryLog = {
     from: name,
@@ -36,18 +33,18 @@ app.post("/participants", async (req, res) => {
     type: "status",
     time: h,
   };
-  await db.collection("messages").insertOne(entryLog)
-  try { 
-    res.sendStatus(201)
+
+  try {
+    await db.collection("participants").insertOne(newParticipant);
+    await db.collection("messages").insertOne(entryLog);
+    res.status(201).send("Participante adicionado");
   } catch (err) {
-    res.status(500).send(err.message)
+    res.status(500).send(err.message);
   }
 
 });
 
-app.post("/messages", async (req, res) => {
-    
-})
+app.post("/messages", async (req, res) => {});
 
 app.get("/participants", (req, res) => {
   db.collection("participants")
