@@ -105,13 +105,28 @@ app.get("/participants", (req, res) => {
     .toArray()
     .then((participants) => res.status(201).send(participants))
     .catch((err) => res.status(500).send(err.message));
+
 });
 
 app.get("/messages", async (req, res) => {
   const { user } = req.headers;
-  const userMessages = await db.collection("messages").findMany({
-    $or: [{}]
-  })
+  const limit = req.query.limit;
+
+try {
+  if(!limit){
+    const shownMessages = await db.collection("messages").find({
+    $or: [{from: user}, {to: user}, {to: "Todos"}]
+  }).toArray();
+  res.send(shownMessages)
+}else{
+  const shownMessages = await db.collection("messages").find({
+    $or: [{from: user}, {to: user}, {to: "Todos"}]
+  }).toArray();
+  res.send(shownMessages.slice(-limit))
+}
+}catch(err) {
+  res.send(500)
+}
 })
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
