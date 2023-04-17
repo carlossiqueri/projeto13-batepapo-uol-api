@@ -1,24 +1,61 @@
-import express from "express"
-import cors from "cors"
-import { MongoClient } from "mongodb"
-import dotenv from "dotenv"
+import express from "express";
+import cors from "cors";
+import { MongoClient, ObjectId } from "mongodb";
+import dotenv from "dotenv";
+import dayjs from "dayjs";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 dotenv.config();
 
-//Configuração do banco de dados
+// Configuração do banco de dados
 let db;
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
-mongoClient.connect()
-    .then(() => db = mongoClient.db())
-    .catch((err) => console.log(err.message));
+mongoClient
+  .connect()
+  .then(() => (db = mongoClient.db()))
+  .catch((err) => console.log(err.message));
 
+// Endpoints
+app.post("/participants", async (req, res) => {
+  const { name } = req.body;
+  const newParticipant = { name, lastStatus: Date.now() };
+  try {
+    await db.collection("participants").insertOne(newParticipant)
+    res.status(201).send("Participante adicionado")
+  } catch(err){
+    res.status(500).send(err.message)
+  }
+
+  const h = dayjs().format("HH:mm:ss");
+  const entryLog = {
+    from: name,
+    to: "todos",
+    text: "entra na sala...",
+    type: "status",
+    time: h,
+  };
+  await db.collection("messages").insertOne(entryLog)
+  try { 
+    res.sendStatus(201)
+  } catch (err) {
+    res.status(500).send(err.message)
+  }
+
+});
+
+app.post("/messages", async (req, res) => {
+    
+})
+
+app.get("/participants", (req, res) => {
+  db.collection("participants")
+    .find()
+    .toArray()
+    .then((participants) => res.status(201).send(participants))
+    .catch((err) => res.status(500).send(err.message));
+});
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
-
-
-
-
