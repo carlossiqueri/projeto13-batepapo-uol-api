@@ -120,7 +120,7 @@ app.get("/messages", async (req, res) => {
         })
         .toArray();
       res.send(shownMessages);
-    } else {
+    }else {
       const shownMessages = await db
         .collection("messages")
         .find({
@@ -130,7 +130,7 @@ app.get("/messages", async (req, res) => {
       res.send(shownMessages.slice(-limit));
     }
   } catch (err) {
-    res.send(500);
+    res.send(422);
   }
 });
 
@@ -148,11 +148,22 @@ app.post("/status", async (req, res) => {
         {name: user},
         {$set: userUpdated}
       )
+      res.sendStatus(200);
     }
   }catch (err) {
-
+    res.sendStatus(404)
   }
 })
+
+setInterval(async () => {
+  const h = dayjs().format("HH:mm:ss");
+try {
+  const afkers = await db.collection("participant").find({lastStatus: {$lte: Date.now() - 10000}});
+}catch (err) {
+  
+}
+
+}, 15000)
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
