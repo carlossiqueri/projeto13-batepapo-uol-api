@@ -3,11 +3,17 @@ import cors from "cors";
 import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
+import joi from "joi";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 dotenv.config();
+
+// Validação de participantes JOI
+const userSchema = joi.object({
+  name: joi.string().required(),
+});
 
 // Configuração do banco de dados
 
@@ -34,14 +40,27 @@ app.post("/participants", async (req, res) => {
     time: h,
   };
 
+  const validation = userSchema.validate(req.body, { abortEarly: false });
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    return res.status(422).send(errors);
+  }
+
   try {
     await db.collection("participants").insertOne(newParticipant);
+    const participant = await db
+      .collection("participants")
+      .findOne({ name: name });
     await db.collection("messages").insertOne(entryLog);
+
+    if (participant)
+      return res
+        .status(409)
+        .send("Este nome de usuário já está sendo utilizado!");
     res.status(201).send("Participante adicionado");
   } catch (err) {
     res.status(500).send(err.message);
   }
-
 });
 
 app.post("/messages", async (req, res) => {});
