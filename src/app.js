@@ -105,28 +105,54 @@ app.get("/participants", (req, res) => {
     .toArray()
     .then((participants) => res.status(201).send(participants))
     .catch((err) => res.status(500).send(err.message));
-
 });
 
 app.get("/messages", async (req, res) => {
   const { user } = req.headers;
   const limit = req.query.limit;
 
-try {
-  if(!limit){
-    const shownMessages = await db.collection("messages").find({
-    $or: [{from: user}, {to: user}, {to: "Todos"}]
-  }).toArray();
-  res.send(shownMessages)
-}else{
-  const shownMessages = await db.collection("messages").find({
-    $or: [{from: user}, {to: user}, {to: "Todos"}]
-  }).toArray();
-  res.send(shownMessages.slice(-limit))
-}
-}catch(err) {
-  res.send(500)
-}
+  try {
+    if (!limit) {
+      const shownMessages = await db
+        .collection("messages")
+        .find({
+          $or: [{ from: user }, { to: user }, { to: "Todos" }],
+        })
+        .toArray();
+      res.send(shownMessages);
+    } else {
+      const shownMessages = await db
+        .collection("messages")
+        .find({
+          $or: [{ from: user }, { to: user }, { to: "Todos" }],
+        })
+        .toArray();
+      res.send(shownMessages.slice(-limit));
+    }
+  } catch (err) {
+    res.send(500);
+  }
+});
+
+app.post("/status", async (req, res) => {
+  const {user} = req.headers;
+  const userUpdated = {}
+  userUpdated.lastStatus = Date.now();
+
+  try {
+    const userStatus = await db.collection("participants").findOne({name: user});
+    if(!user || !userStatus){
+      return res.sendStatus(404);
+    }else {
+      await db.collection("participants").updateOne(
+        {name: user},
+        {$set: userUpdated}
+      )
+    }
+  }catch (err) {
+
+  }
 })
+
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
