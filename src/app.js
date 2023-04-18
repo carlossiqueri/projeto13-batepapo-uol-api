@@ -109,10 +109,10 @@ app.get("/participants", (req, res) => {
 
 app.get("/messages", async (req, res) => {
   const { user } = req.headers;
-  const limit = req.query.limit;
+  const limit = Number(req.query.limit);
 
   try {
-    if (!limit) {
+    if (limit == undefined) {
       const shownMessages = await db
         .collection("messages")
         .find({
@@ -120,7 +120,9 @@ app.get("/messages", async (req, res) => {
         })
         .toArray();
       res.send(shownMessages);
-    }else {
+    } else if (limit == undefined && (limit <= 0 || isNaN(limit))) {
+      return res.sendStatus(422);
+    } else {
       const shownMessages = await db
         .collection("messages")
         .find({
@@ -130,40 +132,60 @@ app.get("/messages", async (req, res) => {
       res.send(shownMessages.slice(-limit));
     }
   } catch (err) {
-    res.send(422);
+    res.sendStatus(500);
   }
 });
 
 app.post("/status", async (req, res) => {
-  const {user} = req.headers;
-  const userUpdated = {}
+  const { user } = req.headers;
+  const userUpdated = {};
   userUpdated.lastStatus = Date.now();
 
   try {
-    const userStatus = await db.collection("participants").findOne({name: user});
-    if(!user || !userStatus){
+    const userStatus = await db
+      .collection("participants")
+      .findOne({ name: user });
+    if (!user || !userStatus) {
       return res.sendStatus(404);
-    }else {
-      await db.collection("participants").updateOne(
-        {name: user},
-        {$set: userUpdated}
-      )
+    } else {
+      await db
+        .collection("participants")
+        .updateOne({ name: user }, { $set: userUpdated });
       res.sendStatus(200);
     }
-  }catch (err) {
-    res.sendStatus(404)
+  } catch (err) {
+    res.sendStatus(404);
   }
-})
+});
 
 setInterval(async () => {
   const h = dayjs().format("HH:mm:ss");
-try {
-  const afkers = await db.collection("participant").find({lastStatus: {$lte: Date.now() - 10000}});
-}catch (err) {
-  
-}
 
-}, 15000)
+  try {
+    const afkers = await db
+      .collection("participants")
+      .find({ lastStatus: { $lte: Date.now() - 10000 } })
+      .toArray();
+
+    if (afkers.length > 0) {
+      const log = afkers.map((afk) => {
+        return {
+          from: afk.name,
+          to: "Todos",
+          text: "sai da sala...",
+          type: "status",
+          time: h,
+        };
+      });
+      await db.collection("messages").insertMany(log);
+      await db
+        .collection("participants")
+        .deleteMany({ lastStatus: { $lte: Date.now() - 10000 } });
+    }
+
+    // console.log(typeof(leavingLog))
+  } catch (err) {}
+}, 15000);
 
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
